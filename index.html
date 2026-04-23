@@ -6,15 +6,16 @@
     <title>AI Hahmogeneraattori</title>
     <style>
         body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; max-width: 800px; margin: 20px auto; }
-        button { padding: 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; background: #333; color: white; transition: 0.2s; }
-        button:hover { background: #555; transform: scale(1.05); }
-        .viking { background: #4a2c2a; } .cartoon { background: #2a4a2c; }
-        #output-container { margin-top: 30px; min-height: 300px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; max-width: 800px; margin: 20px auto; }
+        button { padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; background: #333; color: white; transition: 0.2s; }
+        button:hover { background: #555; transform: scale(1.02); }
+        .viking { background: #5a3e2b; } .pixar { background: #2b5a4e; }
+        .edit-btn { background: #4444ff; display: none; }
+        #output-container { margin-top: 20px; min-height: 300px; position: relative; }
         img { max-width: 100%; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         #loading { display: none; margin: 20px; color: #ffcc00; font-weight: bold; }
-        input { padding: 10px; width: 80%; max-width: 400px; border-radius: 5px; border: none; margin: 10px; }
-        .token-section { background: #222; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        input { padding: 12px; width: 85%; max-width: 400px; border-radius: 5px; border: none; margin: 10px; background: #222; color: white; }
+        .token-section { background: #1a1a1a; padding: 10px; border-radius: 10px; margin-bottom: 20px; font-size: 0.8em; }
     </style>
 </head>
 <body>
@@ -22,15 +23,15 @@
     <h1>AI Hahmonluonti</h1>
 
     <div class="token-section">
-        <input type="password" id="apiToken" placeholder="Liitä Hugging Face Token tähän...">
-        <button onclick="saveToken()" style="padding: 10px;">Tallenna Token</button>
+        <input type="password" id="apiToken" placeholder="Liitä hf_ alkuinen token tähän...">
+        <button onclick="saveToken()" style="padding: 5px 15px;">Tallenna</button>
     </div>
 
-    <input type="text" id="userPrompt" placeholder="Kirjoita lyhyt kuvaus (esim. mies jolla on parta)...">
+    <input type="text" id="userPrompt" placeholder="Mitä kuvassa tapahtuu? (esim. partasuu)...">
 
     <div class="grid">
         <button class="viking" onclick="generate('viking')">VIINKINKI</button>
-        <button class="cartoon" onclick="generate('pixar')">PIXAR-HAHMO</button>
+        <button class="pixar" onclick="generate('pixar')">PIXAR</button>
         <button onclick="generate('gta')">GTA TYyli</button>
         <button onclick="generate('anime')">ANIME</button>
         <button onclick="generate('cyberpunk')">CYBERPUNK</button>
@@ -38,77 +39,106 @@
         <button onclick="generate('zombie')">ZOMBI</button>
         <button onclick="generate('oilpainting')">ÖLJYVÄRI</button>
         <button onclick="generate('minecraft')">MINECRAFT</button>
-        <button onclick="generate('superhero')">SUPERKANKARI</button>
+        <button onclick="generate('superhero')">SANKARI</button>
     </div>
 
-    <div id="loading">Taikuus tapahtuu... Odota hetki (n. 30-60s)</div>
+    <div id="loading">Taikuus tapahtuu...</div>
+
+    <div id="edit-controls" class="grid" style="max-width: 600px;">
+        <button class="edit-btn" onclick="generate('snow')">❄️ Lisää lunta</button>
+        <button class="edit-btn" onclick="generate('dark')">🌑 Synkempi</button>
+        <button class="edit-btn" onclick="generate('fire')">🔥 Lisää tulta</button>
+        <button class="edit-btn" onclick="generate('gold')">✨ Kultainen hohde</button>
+        <button class="edit-btn" onclick="generate('action')">⚡ Vauhtia/Salamaa</button>
+    </div>
     
     <div id="output-container">
         <div id="resultImage"></div>
     </div>
 
     <script>
-        // Tallentaa tokenin selaimeen, ettei sitä tarvitse aina hakea
         function saveToken() {
-            const token = document.getElementById('apiToken').value;
+            const token = document.getElementById('apiToken').value.trim();
             localStorage.setItem('hf_token', token);
             alert("Token tallennettu!");
         }
 
-        // Ladataan tallennettu token jos se löytyy
         window.onload = () => {
             const savedToken = localStorage.getItem('hf_token');
             if (savedToken) document.getElementById('apiToken').value = savedToken;
         }
 
-        async function generate(style) {
-            const token = document.getElementById('apiToken').value;
+        let lastPrompt = "";
+
+        async function generate(mode) {
+            const token = document.getElementById('apiToken').value.trim();
             const userInput = document.getElementById('userPrompt').value;
             const loading = document.getElementById('loading');
             const resultDiv = document.getElementById('resultImage');
+            const editButtons = document.querySelectorAll('.edit-btn');
 
-            if (!token) return alert("Lisää ensin API-token!");
+            if (!token) return alert("Pistä se hf_ alkuinen token yläpalkkiin!");
             
             loading.style.display = "block";
-            resultDiv.innerHTML = "";
-
-            // Tyylien prompt-lisäykset
+            loading.innerText = "Valmistellaan... (Eka kerta voi kestää)";
+            
             const styles = {
-                viking: "realistic viking warrior, cinematic lighting, fur armor, rugged, hyper-detailed",
-                pixar: "disney pixar 3d cartoon style, cute, smooth textures, big eyes, 8k render",
-                gta: "GTA V loading screen art style, bold lines, high contrast, illustrated",
-                anime: "studio ghibli anime style, soft colors, hand-drawn aesthetic",
-                cyberpunk: "cyberpunk 2077 style, neon lights, futuristic armor, glowing elements",
-                statue: "ancient roman marble statue, cracked stone, museum lighting",
-                zombie: "scary zombie, decayed skin, horror movie style, cinematic",
-                oilpainting: "classic old oil painting, visible brushstrokes, canvas texture, masterpiece",
-                minecraft: "minecraft blocky voxel style, pixelated, 3d blocks",
-                superhero: "marvel comic book style, heroic pose, vibrant colors, cel-shaded"
+                viking: "realistic viking warrior, rugged, hyper-detailed, cinematic",
+                pixar: "disney pixar 3d cartoon, cute, 8k render",
+                gta: "GTA V loading screen art, bold lines, illustrated",
+                anime: "studio ghibli anime, soft colors",
+                cyberpunk: "cyberpunk neon lights, futuristic",
+                statue: "ancient marble statue, masterpiece",
+                zombie: "scary zombie, horror movie lighting",
+                oilpainting: "classic oil painting, brushstrokes",
+                minecraft: "minecraft voxel blocky style",
+                superhero: "marvel comic style, vibrant",
+                // Jatko-ohjeet
+                snow: "heavy snowfall, blizzard, frozen details",
+                dark: "nighttime, dark shadows, moody, cinematic fog",
+                fire: "raging fire in background, embers, orange glow",
+                gold: "golden armor, divine light, sparkling gold",
+                action: "action shot, lightning bolts, motion blur, power"
             };
 
-            const fullPrompt = `${userInput}, ${styles[style]}`;
+            // Jos klikataan jatkonappia, lisätään se edelliseen promptiin
+            if (['snow','dark','fire','gold','action'].includes(mode)) {
+                lastPrompt = lastPrompt + ", " + styles[mode];
+            } else {
+                lastPrompt = userInput + ", " + styles[mode];
+            }
 
             try {
-                // Käytetään Flux Schnell -mallia (nopea ja ilmainen)
                 const response = await fetch(
                     "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
                     {
-                        headers: { Authorization: `Bearer ${token}` },
+                        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
                         method: "POST",
-                        body: JSON.stringify({ inputs: fullPrompt }),
+                        body: JSON.stringify({ inputs: lastPrompt }),
                     }
                 );
 
+                if (response.status === 503) {
+                    loading.innerText = "Malli heräilee... yritetään taas 5s kuluttua.";
+                    setTimeout(() => generate(mode), 5000);
+                    return;
+                }
+
+                if (!response.ok) throw new Error(await response.text());
+
                 const blob = await response.blob();
                 const imgUrl = URL.createObjectURL(blob);
-                resultDiv.innerHTML = `<img src="${imgUrl}" alt="Generated AI Image">`;
+                resultDiv.innerHTML = `<img src="${imgUrl}">`;
+                
+                // Näytetään jatkonapit
+                editButtons.forEach(btn => btn.style.display = "block");
             } catch (error) {
-                alert("Virhe kuvatessa. Kokeile hetken päästä uudelleen.");
-                console.error(error);
+                alert("Virhe: " + error.message);
             } finally {
-                loading.style.display = "none";
+                if (!loading.innerText.includes("yritetään taas")) loading.style.display = "none";
             }
         }
     </script>
 </body>
 </html>
+ 
