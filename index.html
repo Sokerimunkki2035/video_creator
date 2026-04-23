@@ -3,142 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Hahmogeneraattori</title>
+    <title>AI Hahmogeneraattori PRO</title>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; max-width: 800px; margin: 20px auto; }
-        button { padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; background: #333; color: white; transition: 0.2s; }
-        button:hover { background: #555; transform: scale(1.02); }
-        .viking { background: #5a3e2b; } .pixar { background: #2b5a4e; }
-        .edit-btn { background: #4444ff; display: none; }
-        #output-container { margin-top: 20px; min-height: 300px; position: relative; }
-        img { max-width: 100%; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        #loading { display: none; margin: 20px; color: #ffcc00; font-weight: bold; }
-        input { padding: 12px; width: 85%; max-width: 400px; border-radius: 5px; border: none; margin: 10px; background: #222; color: white; }
-        .token-section { background: #1a1a1a; padding: 10px; border-radius: 10px; margin-bottom: 20px; font-size: 0.8em; }
+        body { font-family: sans-serif; background: #0f0f0f; color: #eee; text-align: center; padding: 15px; }
+        .token-box { background: #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
+        input { padding: 12px; width: 85%; max-width: 400px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; margin: 5px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; max-width: 700px; margin: 20px auto; }
+        button { padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: #333; color: white; transition: 0.2s; }
+        button:active { transform: scale(0.95); }
+        .main-btn { background: #3d3d3d; border-bottom: 3px solid #1a1a1a; }
+        .viking { background: #634133; }
+        .pixar { background: #336354; }
+        #loading { display: none; color: #00d4ff; margin: 20px; font-weight: bold; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        img { max-width: 100%; border-radius: 12px; margin-top: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.7); }
+        .error-log { color: #ff4444; font-size: 0.8em; margin-top: 10px; display: none; background: #221111; padding: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-    <h1>AI Hahmonluonti</h1>
+    <h2>AI Hahmogeneraattori</h2>
 
-    <div class="token-section">
-        <input type="password" id="apiToken" placeholder="Liitä hf_ alkuinen token tähän...">
-        <button onclick="saveToken()" style="padding: 5px 15px;">Tallenna</button>
+    <div class="token-box">
+        <input type="password" id="apiToken" placeholder="Liitä hf_alkuinen token...">
+        <button onclick="saveToken()">Tallenna</button>
     </div>
 
-    <input type="text" id="userPrompt" placeholder="Mitä kuvassa tapahtuu? (esim. partasuu)...">
+    <input type="text" id="userPrompt" placeholder="Mitä kuvassa on? (esim. mies parta)...">
 
     <div class="grid">
-        <button class="viking" onclick="generate('viking')">VIINKINKI</button>
-        <button class="pixar" onclick="generate('pixar')">PIXAR</button>
-        <button onclick="generate('gta')">GTA TYyli</button>
-        <button onclick="generate('anime')">ANIME</button>
-        <button onclick="generate('cyberpunk')">CYBERPUNK</button>
-        <button onclick="generate('statue')">PATSAS</button>
-        <button onclick="generate('zombie')">ZOMBI</button>
-        <button onclick="generate('oilpainting')">ÖLJYVÄRI</button>
-        <button onclick="generate('minecraft')">MINECRAFT</button>
-        <button onclick="generate('superhero')">SANKARI</button>
+        <button class="main-btn viking" onclick="generate('viking')">VIIKINKI</button>
+        <button class="main-btn pixar" onclick="generate('pixar')">PIXAR</button>
+        <button class="main-btn" onclick="generate('gta')">GTA</button>
+        <button class="main-btn" onclick="generate('anime')">ANIME</button>
+        <button class="main-btn" onclick="generate('cyberpunk')">CYBERPUNK</button>
+        <button class="main-btn" onclick="generate('zombie')">ZOMBI</button>
+        <button class="main-btn" onclick="generate('oil')">ÖLJYVÄRI</button>
+        <button class="main-btn" onclick="generate('hero')">SANKARI</button>
     </div>
 
-    <div id="loading">Taikuus tapahtuu...</div>
-
-    <div id="edit-controls" class="grid" style="max-width: 600px;">
-        <button class="edit-btn" onclick="generate('snow')">❄️ Lisää lunta</button>
-        <button class="edit-btn" onclick="generate('dark')">🌑 Synkempi</button>
-        <button class="edit-btn" onclick="generate('fire')">🔥 Lisää tulta</button>
-        <button class="edit-btn" onclick="generate('gold')">✨ Kultainen hohde</button>
-        <button class="edit-btn" onclick="generate('action')">⚡ Vauhtia/Salamaa</button>
-    </div>
-    
-    <div id="output-container">
-        <div id="resultImage"></div>
-    </div>
+    <div id="loading">Yritetään luoda kuvaa...</div>
+    <div id="errorDisplay" class="error-log"></div>
+    <div id="result"></div>
 
     <script>
         function saveToken() {
-            const token = document.getElementById('apiToken').value.trim();
-            localStorage.setItem('hf_token', token);
+            const t = document.getElementById('apiToken').value.trim();
+            if(!t.startsWith('hf_')) return alert("Tokenin pitää alkaa 'hf_'!");
+            localStorage.setItem('hf_token_v2', t);
             alert("Token tallennettu!");
         }
 
         window.onload = () => {
-            const savedToken = localStorage.getItem('hf_token');
-            if (savedToken) document.getElementById('apiToken').value = savedToken;
+            const saved = localStorage.getItem('hf_token_v2');
+            if (saved) document.getElementById('apiToken').value = saved;
         }
 
-        let lastPrompt = "";
-
-        async function generate(mode) {
+        async function generate(style) {
             const token = document.getElementById('apiToken').value.trim();
-            const userInput = document.getElementById('userPrompt').value;
-            const loading = document.getElementById('loading');
-            const resultDiv = document.getElementById('resultImage');
-            const editButtons = document.querySelectorAll('.edit-btn');
+            const input = document.getElementById('userPrompt').value || "man";
+            const load = document.getElementById('loading');
+            const err = document.getElementById('errorDisplay');
+            const res = document.getElementById('result');
 
-            if (!token) return alert("Pistä se hf_ alkuinen token yläpalkkiin!");
-            
-            loading.style.display = "block";
-            loading.innerText = "Valmistellaan... (Eka kerta voi kestää)";
-            
-            const styles = {
-                viking: "realistic viking warrior, rugged, hyper-detailed, cinematic",
-                pixar: "disney pixar 3d cartoon, cute, 8k render",
-                gta: "GTA V loading screen art, bold lines, illustrated",
-                anime: "studio ghibli anime, soft colors",
-                cyberpunk: "cyberpunk neon lights, futuristic",
-                statue: "ancient marble statue, masterpiece",
-                zombie: "scary zombie, horror movie lighting",
-                oilpainting: "classic oil painting, brushstrokes",
-                minecraft: "minecraft voxel blocky style",
-                superhero: "marvel comic style, vibrant",
-                // Jatko-ohjeet
-                snow: "heavy snowfall, blizzard, frozen details",
-                dark: "nighttime, dark shadows, moody, cinematic fog",
-                fire: "raging fire in background, embers, orange glow",
-                gold: "golden armor, divine light, sparkling gold",
-                action: "action shot, lightning bolts, motion blur, power"
+            if (!token) return alert("Pistä token yläpalkkiin!");
+
+            load.style.display = "block";
+            err.style.display = "none";
+            res.innerHTML = "";
+
+            const prompts = {
+                viking: "realistic viking warrior, cinematic, hyperdetailed",
+                pixar: "disney pixar style cartoon character, 3d render",
+                gta: "gta v loading screen art style",
+                anime: "studio ghibli style anime art",
+                cyberpunk: "cyberpunk 2077 aesthetic, neon lights",
+                zombie: "scary horror zombie, cinematic",
+                oil: "masterpiece oil painting, thick brushstrokes",
+                hero: "superhero comic book style"
             };
 
-            // Jos klikataan jatkonappia, lisätään se edelliseen promptiin
-            if (['snow','dark','fire','gold','action'].includes(mode)) {
-                lastPrompt = lastPrompt + ", " + styles[mode];
-            } else {
-                lastPrompt = userInput + ", " + styles[mode];
-            }
+            const fullPrompt = input + ", " + prompts[style];
 
             try {
+                // VAIHDETTU MALLI: Stable Diffusion XL on vakaampi ilmaisessa käytössä
                 const response = await fetch(
-                    "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+                    "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
                     {
-                        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+                        headers: { 
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json"
+                        },
                         method: "POST",
-                        body: JSON.stringify({ inputs: lastPrompt }),
+                        body: JSON.stringify({ inputs: fullPrompt }),
                     }
                 );
 
                 if (response.status === 503) {
-                    loading.innerText = "Malli heräilee... yritetään taas 5s kuluttua.";
-                    setTimeout(() => generate(mode), 5000);
+                    load.innerText = "Malli heräilee (HF 503)... yritetään taas 5s kuluttua.";
+                    setTimeout(() => generate(style), 5000);
                     return;
                 }
 
-                if (!response.ok) throw new Error(await response.text());
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HF virhe: ${response.status} - ${errorText}`);
+                }
 
                 const blob = await response.blob();
-                const imgUrl = URL.createObjectURL(blob);
-                resultDiv.innerHTML = `<img src="${imgUrl}">`;
-                
-                // Näytetään jatkonapit
-                editButtons.forEach(btn => btn.style.display = "block");
-            } catch (error) {
-                alert("Virhe: " + error.message);
+                res.innerHTML = `<img src="${URL.createObjectURL(blob)}">`;
+            } catch (e) {
+                err.style.display = "block";
+                err.innerText = "VIRHE: " + e.message;
+                console.error(e);
             } finally {
-                if (!loading.innerText.includes("yritetään taas")) loading.style.display = "none";
+                if (!load.innerText.includes("yritetään")) load.style.display = "none";
             }
         }
     </script>
 </body>
 </html>
- 
